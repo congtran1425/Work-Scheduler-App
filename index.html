@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Work Scheduler - Quản lý công việc</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-calendar-alt"></i>
+                    <h1>Work Scheduler</h1>
+                </div>
+                <nav class="nav">
+                    <a href="#" class="nav-link active" data-page="calendar">
+                        <i class="fas fa-calendar"></i>
+                        Lịch
+                    </a>
+                    <a href="#" class="nav-link" data-page="tasks">
+                        <i class="fas fa-tasks"></i>
+                        Công việc
+                    </a>
+                    <a href="#" class="nav-link" data-page="share">
+                        <i class="fas fa-share-alt"></i>
+                        Chia sẻ
+                    </a>
+                </nav>
+                <div class="user-menu">
+                    <div class="user-info" id="userInfo" style="display: none;">
+                        <span class="user-name" id="userName"></span>
+                        <span class="user-role" id="userRole"></span>
+                    </div>
+                    <button class="btn btn-outline" id="loginBtn">Đăng nhập</button>
+                    <button class="btn btn-outline" id="logoutBtn" style="display: none;">Đăng xuất</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="container">
+            <!-- Login Modal -->
+            <div class="modal" id="loginModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>Đăng nhập</h2>
+                        <button class="close-btn" id="closeLoginModal">&times;</button>
+                    </div>
+                    <form id="loginForm">
+                        <div class="form-group">
+                            <label for="username">Tên đăng nhập</label>
+                            <input type="text" id="username" name="username" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Mật khẩu</label>
+                            <input type="password" id="password" name="password" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Đăng nhập</button>
+                    </form>
+                    <p class="register-link">
+                        Chưa có tài khoản? <a href="#" id="showRegisterModal">Đăng ký ngay</a>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Register Modal -->
+            <div class="modal" id="registerModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>Đăng ký</h2>
+                        <button class="close-btn" id="closeRegisterModal">&times;</button>
+                    </div>
+                    <form id="registerForm">
+                        <div class="form-group">
+                            <label for="regUsername">Tên đăng nhập</label>
+                            <input type="text" id="regUsername" name="username" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="regEmail">Email</label>
+                            <input type="email" id="regEmail" name="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="regPassword">Mật khẩu</label>
+                            <input type="password" id="regPassword" name="password" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="regConfirmPassword">Xác nhận mật khẩu</label>
+                            <input type="password" id="regConfirmPassword" name="confirmPassword" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Đăng ký</button>
+                    </form>
+                    <p class="register-link">
+                        Đã có tài khoản? <a href="#" id="showLoginModal">Đăng nhập</a>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Calendar Page -->
+            <div class="page active" id="calendarPage">
+                <div class="page-header">
+                    <h2>Lịch công việc</h2>
+                    <div class="calendar-controls">
+                        <button class="btn btn-outline" id="prevMonth">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <span class="current-month" id="currentMonth"></span>
+                        <button class="btn btn-outline" id="nextMonth">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="calendar-container">
+                    <div class="calendar" id="calendar"></div>
+                </div>
+            </div>
+
+            <!-- Tasks Page -->
+            <div class="page" id="tasksPage">
+                <div class="page-header">
+                    <h2>Danh sách công việc</h2>
+                    <button class="btn btn-primary" id="addTaskBtn">
+                        <i class="fas fa-plus"></i>
+                        Thêm công việc
+                    </button>
+                </div>
+                <div class="tasks-container">
+                    <div class="tasks-list" id="tasksList"></div>
+                </div>
+            </div>
+
+            <!-- Share Page -->
+            <div class="page" id="sharePage">
+                <div class="page-header">
+                    <h2>Chia sẻ lịch trình</h2>
+                </div>
+                <div class="share-container">
+                    <div class="share-form">
+                        <h3>Chia sẻ lịch trình của bạn</h3>
+                        <div class="form-group">
+                            <label for="shareEmail">Email người nhận</label>
+                            <input type="email" id="shareEmail" placeholder="Nhập email người nhận">
+                        </div>
+                        <div class="form-group">
+                            <label for="shareMessage">Lời nhắn (tùy chọn)</label>
+                            <textarea id="shareMessage" placeholder="Nhập lời nhắn..."></textarea>
+                        </div>
+                        <button class="btn btn-primary" id="shareBtn">Gửi chia sẻ</button>
+                    </div>
+                    <div class="shared-calendars">
+                        <h3>Lịch trình được chia sẻ</h3>
+                        <div class="shared-list" id="sharedList"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Task Modal -->
+    <div class="modal" id="taskModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="taskModalTitle">Thêm công việc</h2>
+                <button class="close-btn" id="closeTaskModal">&times;</button>
+            </div>
+            <form id="taskForm">
+                <input type="hidden" id="taskId">
+                <div class="form-group">
+                    <label for="taskTitle">Tiêu đề</label>
+                    <input type="text" id="taskTitle" name="title" required>
+                </div>
+                <div class="form-group">
+                    <label for="taskDescription">Mô tả</label>
+                    <textarea id="taskDescription" name="description"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="taskDate">Ngày</label>
+                    <input type="date" id="taskDate" name="date" required>
+                </div>
+                <div class="form-group">
+                    <label for="taskTime">Thời gian</label>
+                    <input type="time" id="taskTime" name="time">
+                </div>
+                <div class="form-group">
+                    <label for="taskPriority">Độ ưu tiên</label>
+                    <select id="taskPriority" name="priority">
+                        <option value="low">Thấp</option>
+                        <option value="medium">Trung bình</option>
+                        <option value="high">Cao</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="taskStatus">Trạng thái</label>
+                    <select id="taskStatus" name="status">
+                        <option value="pending">Chờ thực hiện</option>
+                        <option value="in-progress">Đang thực hiện</option>
+                        <option value="completed">Hoàn thành</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" id="cancelTask">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Day Tasks Modal -->
+    <div class="modal" id="dayTasksModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="dayTasksTitle">Công việc ngày</h2>
+                <button class="close-btn" id="closeDayTasksModal">&times;</button>
+            </div>
+            <div class="day-tasks-content">
+                <div class="day-tasks-list" id="dayTasksList"></div>
+                <div class="day-tasks-actions">
+                    <button class="btn btn-primary" id="addTaskForDay">
+                        <i class="fas fa-plus"></i>
+                        Thêm công việc
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
