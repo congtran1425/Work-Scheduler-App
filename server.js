@@ -107,7 +107,7 @@ function requireAdmin(req, res, next) {
 }
 
 // Email configuration (for sharing)
-const transporter = nodemailer.createTransporter({
+const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
         user: process.env.EMAIL_USER || 'your-email@gmail.com',
@@ -209,7 +209,7 @@ app.get('/api/tasks', authenticateToken, (req, res) => {
 
 app.post('/api/tasks', authenticateToken, [
     body('title').isLength({ min: 1 }).trim().escape(),
-    body('date').isISO8601().toDateString(),
+    body('date').isISO8601().toDate(),
     body('priority').isIn(['low', 'medium', 'high']),
     body('status').isIn(['pending', 'in-progress', 'completed'])
 ], (req, res) => {
@@ -235,7 +235,7 @@ app.post('/api/tasks', authenticateToken, [
 
 app.put('/api/tasks/:id', authenticateToken, [
     body('title').isLength({ min: 1 }).trim().escape(),
-    body('date').isISO8601().toDateString(),
+    body('date').isISO8601().toDate(),
     body('priority').isIn(['low', 'medium', 'high']),
     body('status').isIn(['pending', 'in-progress', 'completed'])
 ], (req, res) => {
