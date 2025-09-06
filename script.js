@@ -13,8 +13,15 @@ class WorkScheduler {
 
     init() {
         this.setupEventListeners();
-        this.renderCalendar();
+        this.initializeCalendar();
         this.checkAuthStatus();
+    }
+
+    initializeCalendar() {
+        // Ensure currentDate is set to the first day of current month
+        const today = new Date();
+        this.currentDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        this.renderCalendar();
     }
 
     // API Helper Methods
@@ -63,6 +70,11 @@ class WorkScheduler {
         document.getElementById('userInfo').style.display = 'flex';
         document.getElementById('loginBtn').style.display = 'none';
         document.getElementById('logoutBtn').style.display = 'block';
+        
+        // Show admin navigation if user is admin
+        if (this.currentUser.role === 'admin') {
+            document.getElementById('adminNavLink').style.display = 'block';
+        }
     }
 
     async login(username, password) {
@@ -121,9 +133,15 @@ class WorkScheduler {
         const calendar = document.getElementById('calendar');
         const currentMonth = document.getElementById('currentMonth');
         
+        if (!calendar || !currentMonth) {
+            console.error('Calendar elements not found');
+            return;
+        }
+        
         const year = this.currentDate.getFullYear();
         const month = this.currentDate.getMonth();
         
+        // Update month display
         currentMonth.textContent = this.getMonthName(month) + ' ' + year;
         
         // Clear calendar
@@ -186,6 +204,8 @@ class WorkScheduler {
             
             calendar.appendChild(dayCell);
         }
+        
+        console.log(`Rendered calendar for ${this.getMonthName(month)} ${year}`);
     }
 
     getMonthName(month) {
@@ -197,12 +217,35 @@ class WorkScheduler {
     }
 
     navigateMonth(direction) {
+        const currentYear = this.currentDate.getFullYear();
+        const currentMonth = this.currentDate.getMonth();
+        
         if (direction === 'prev') {
-            this.currentDate.setMonth(this.currentDate.getMonth() - 1);
+            if (currentMonth === 0) {
+                // January -> December of previous year
+                this.currentDate = new Date(currentYear - 1, 11, 1);
+            } else {
+                this.currentDate = new Date(currentYear, currentMonth - 1, 1);
+            }
         } else {
-            this.currentDate.setMonth(this.currentDate.getMonth() + 1);
+            if (currentMonth === 11) {
+                // December -> January of next year
+                this.currentDate = new Date(currentYear + 1, 0, 1);
+            } else {
+                this.currentDate = new Date(currentYear, currentMonth + 1, 1);
+            }
         }
+        
         this.renderCalendar();
+        this.loadTasks(); // Reload tasks for the new month
+    }
+
+    goToToday() {
+        const today = new Date();
+        this.currentDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        this.renderCalendar();
+        this.loadTasks();
+        this.showNotification('Đã chuyển về tháng hiện tại', 'info');
     }
 
     // Task Methods
@@ -546,6 +589,8 @@ class WorkScheduler {
         } else if (pageId === 'sharePage') {
             await this.loadSharedCalendars();
             this.renderSharedCalendars();
+        } else if (pageId === 'adminPage') {
+            await this.loadAdminData();
         }
     }
 
@@ -658,6 +703,10 @@ class WorkScheduler {
             this.navigateMonth('next');
         });
 
+        document.getElementById('todayBtn').addEventListener('click', () => {
+            this.goToToday();
+        });
+
         // Task Management
         document.getElementById('addTaskBtn').addEventListener('click', () => {
             if (!this.currentUser) {
@@ -744,6 +793,118 @@ class WorkScheduler {
                 }
             });
         });
+    }
+
+    // Admin Methods
+    async loadAdminData() {
+        if (this.currentUser.role !== 'admin') {
+            this.showNotification('Bạn không có quyền truy cập trang này!', 'error');
+            return;
+        }
+
+        try {
+            await Promise.all([
+                this.loadAdminStats(),
+                this.loadAdminUsers()
+            ]);
+        } catch (error) {
+            this.showNotification('Lỗi khi tải dữ liệu admin!', 'error');
+        }
+    }
+
+    async loadAdminStats() {
+        try {
+            const response = await this.apiRequest('/admin/stats');
+            document.getElementById('totalUsers').textContent = response.totalUsers;
+            document.getElementById('totalTasks').textContent = response.totalTasks;
+            document.getElementById('totalShares').textContent = response.totalShares;
+        } catch (error) {
+            console.error('Error loading admin stats:', error);
+        }
+    }
+
+    async loadAdminUsers() {
+        try {
+            const response = await this.apiRequest('/admin/users');
+            this.renderAdminUsers(response);
+        } catch (error) {
+            console.error('Error loading admin users:', error);
+        }
+    }
+
+    renderAdminUsers(users) {
+        const usersList = document.getElementById('adminUsersList');
+        usersList.innerHTML = '';
+
+        if (users.length === 0) {
+            usersList.innerHTML = '<p class="text-center">Không có người dùng nào.</p>';
+            return;
+        }
+
+        users.forEach(user => {
+            const userElement = this.createAdminUserElement(user);
+            usersList.appendChild(userElement);
+        });
+    }
+
+    createAdminUserElement(user) {
+        const userDiv = document.createElement('div');
+        userDiv.className = 'user-item';
+        
+        const isCurrentUser = user.id === this.currentUser.id;
+        const oppositeRole = user.role === 'admin' ? 'user' : 'admin';
+        
+        userDiv.innerHTML = `
+            <div class="user-info">
+                <div class="user-name">${user.username}</div>
+                <div class="user-email">${user.email}</div>
+                <span class="user-role ${user.role}">${user.role === 'admin' ? 'Quản trị viên' : 'Người dùng'}</span>
+            </div>
+            <div class="user-actions">
+                ${!isCurrentUser ? `
+                    <button class="btn-role" onclick="app.changeUserRole(${user.id}, '${oppositeRole}')">
+                        ${oppositeRole === 'admin' ? 'Làm Admin' : 'Làm User'}
+                    </button>
+                    <button class="btn-delete" onclick="app.deleteUser(${user.id})">
+                        Xóa
+                    </button>
+                ` : '<span style="color: var(--text-light); font-size: var(--font-size-sm);">Tài khoản của bạn</span>'}
+            </div>
+        `;
+        
+        return userDiv;
+    }
+
+    async changeUserRole(userId, newRole) {
+        if (confirm(`Bạn có chắc chắn muốn thay đổi quyền của người dùng này thành ${newRole === 'admin' ? 'Quản trị viên' : 'Người dùng'}?`)) {
+            try {
+                await this.apiRequest(`/admin/users/${userId}/role`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ role: newRole })
+                });
+
+                this.showNotification('Thay đổi quyền thành công!', 'success');
+                await this.loadAdminUsers();
+            } catch (error) {
+                this.showNotification('Lỗi khi thay đổi quyền!', 'error');
+            }
+        }
+    }
+
+    async deleteUser(userId) {
+        if (confirm('Bạn có chắc chắn muốn xóa người dùng này? Hành động này không thể hoàn tác!')) {
+            try {
+                await this.apiRequest(`/admin/users/${userId}`, {
+                    method: 'DELETE'
+                });
+
+                this.showNotification('Xóa người dùng thành công!', 'success');
+                await this.loadAdminUsers();
+                await this.loadAdminStats();
+            } catch (error) {
+                this.showNotification('Lỗi khi xóa người dùng!', 'error');
+            }
+        }
     }
 }
 

@@ -190,14 +190,9 @@ app.post('/api/auth/login', [
 
 // Tasks routes
 app.get('/api/tasks', authenticateToken, (req, res) => {
-    let query = 'SELECT * FROM tasks WHERE user_id = ?';
-    let params = [req.user.id];
-
-    // Admin can see all tasks
-    if (req.user.role === 'admin') {
-        query = 'SELECT t.*, u.username FROM tasks t JOIN users u ON t.user_id = u.id';
-        params = [];
-    }
+    // All users (including admin) can only see their own tasks
+    const query = 'SELECT * FROM tasks WHERE user_id = ?';
+    const params = [req.user.id];
 
     db.all(query, params, (err, tasks) => {
         if (err) {
@@ -369,11 +364,77 @@ app.get('/api/shared', authenticateToken, (req, res) => {
 
 // Admin routes
 app.get('/api/admin/users', authenticateToken, requireAdmin, (req, res) => {
-    db.all('SELECT id, username, email, role, created_at FROM users', (err, users) => {
+    db.all('SELECT id, username, email, role, created_at FROM users ORDER BY created_at DESC', (err, users) => {
         if (err) {
             return res.status(500).json({ error: 'Database error' });
         }
         res.json(users);
+    });
+});
+
+app.put('/api/admin/users/:id/role', authenticateToken, requireAdmin, [
+    body('role').isIn(['user', 'admin'])
+], (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    const userId = req.params.id;
+    const { role } = req.body;
+
+    // Prevent admin from changing their own role
+    if (parseInt(userId) === req.user.id) {
+        return res.status(400).json({ error: 'Cannot change your own role' });
+    }
+
+    db.run('UPDATE users SET role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', 
+        [role, userId], function(err) {
+            if (err) {
+                return res.status(500).json({ error: 'Database error' });
+            }
+            
+            if (this.changes === 0) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+            
+            res.json({ message: 'User role updated successfully' });
+        });
+});
+
+app.delete('/api/admin/users/:id', authenticateToken, requireAdmin, (req, res) => {
+    const userId = req.params.id;
+
+    // Prevent admin from deleting themselves
+    if (parseInt(userId) === req.user.id) {
+        return res.status(400).json({ error: 'Cannot delete your own account' });
+    }
+
+    // Delete user's tasks first
+    db.run('DELETE FROM tasks WHERE user_id = ?', [userId], (err) => {
+        if (err) {
+            return res.status(500).json({ error: 'Database error' });
+        }
+        
+        // Delete user's shared calendars
+        db.run('DELETE FROM shared_calendars WHERE from_user_id = ?', [userId], (err) => {
+            if (err) {
+                return res.status(500).json({ error: 'Database error' });
+            }
+            
+            // Delete the user
+            db.run('DELETE FROM users WHERE id = ?', [userId], function(err) {
+                if (err) {
+                    return res.status(500).json({ error: 'Database error' });
+                }
+                
+                if (this.changes === 0) {
+                    return res.status(404).json({ error: 'User not found' });
+                }
+                
+                res.json({ message: 'User deleted successfully' });
+            });
+        });
     });
 });
 
